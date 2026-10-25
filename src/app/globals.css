@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #faf7f2;
+  --color-surface: #ffffff;
+  --color-fg: #1f2a2e;
+  --color-muted: #6b7478;
+  --color-line: #e7e1d8;
+  --color-brand: #0f766e;
+  --color-accent: #d97706;
+  --color-danger: #dc2626;
+  --font-sans: var(--font-heebo), system-ui, sans-serif;
+}
+
+html {
+  color-scheme: light;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+input[type="date"] {
+  min-height: 2.75rem;
+}
