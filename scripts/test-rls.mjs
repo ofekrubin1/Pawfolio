@@ -1,9 +1,13 @@
 // Security check against the LOCAL Supabase stack: families must never see each other's data.
 // Run: node scripts/test-rls.mjs   (needs `npx supabase start`)
+// Against the cloud project: TEST_URL=... TEST_KEY=... TEST_SECRET=... node scripts/test-rls.mjs
+// (users are created confirmed with the secret key, and everything is deleted at the end)
 import { createClient } from "@supabase/supabase-js";
 
-const URL = "http://127.0.0.1:54321";
-const KEY = "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH";
+const URL = process.env.TEST_URL || "http://127.0.0.1:54321";
+const KEY = process.env.TEST_KEY || "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH";
+const admin = process.env.TEST_SECRET ? createClient(URL, process.env.TEST_SECRET, { auth: { persistSession: false } }) : null;
+const created = [];
 const run = Date.now();
 let failed = 0;
 
@@ -14,7 +18,16 @@ function check(name, ok, extra = "") {
 
 async function user(tag) {
   const c = createClient(URL, KEY, { auth: { persistSession: false } });
-  const { data, error } = await c.auth.signUp({ email: `${tag}-${run}@test.local`, password: "password123" });
+  const email = `rls-${tag}-${run}@test.local`;
+  if (admin) {
+    const { data, error } = await admin.auth.admin.createUser({ email, password: "password123", email_confirm: true });
+    if (error) throw error;
+    created.push(data.user.id);
+    const { error: e2 } = await c.auth.signInWithPassword({ email, password: "password123" });
+    if (e2) throw e2;
+    return { c, id: data.user.id };
+  }
+  const { data, error } = await c.auth.signUp({ email, password: "password123" });
   if (error) throw error;
   return { c, id: data.user.id };
 }
@@ -105,6 +118,18 @@ check("removed member loses access", bAfter?.length === 0);
 await C.c.rpc("leave_household");
 const { data: h2gone } = await A.c.rpc("my_household_id");
 check("last member leaving deletes that family (A unaffected)", h2gone === h1.id);
+
+if (admin) {
+  // Clean up: test families (with their dogs and files), then the test users.
+  const { data: hs } = await admin.from("households").select("id").in("created_by", created);
+  for (const h of hs ?? []) {
+    const { data: files } = await admin.storage.from("attachments").list(`${h.id}/files`);
+    if (files?.length) await admin.storage.from("attachments").remove(files.map((f) => `${h.id}/files/${f.name}`));
+    await admin.from("households").delete().eq("id", h.id);
+  }
+  for (const id of created) await admin.auth.admin.deleteUser(id);
+  console.log(`cleaned up ${hs?.length ?? 0} test families and ${created.length} test users`);
+}
 
 console.log(failed ? `\n${failed} FAILED` : "\nAll checks passed");
 process.exit(failed ? 1 : 0);

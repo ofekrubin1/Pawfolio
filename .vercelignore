@@ -1,0 +1,7 @@
+# Never upload local settings or secrets (.env.local turns on the test login).
+.env*
+!.env.example
+.next
+node_modules
+supabase/.temp
+scripts
