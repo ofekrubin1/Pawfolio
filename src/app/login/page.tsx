@@ -68,7 +68,7 @@ export default function LoginPage() {
           <PawPrint size={44} />
         </span>
         <h1 className="text-3xl font-bold">Pawfolio</h1>
-        <p className="mt-2 text-muted">חיסונים, אוכל, ביטוח ועלויות של הכלב – במקום אחד, לכל המשפחה</p>
+        <p className="mt-2 text-muted">לנהל את כל המידע על הכלב שלך במקום אחד</p>
       </div>
       <button
         onClick={signIn}
